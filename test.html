@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>AutoSkip – Test Page</title>
+  <style>
+    body { font-family: Inter, sans-serif; background: #0d0d1a; color: #f0f4ff; margin: 0; padding: 30px; }
+    h1 { background: linear-gradient(135deg,#00c6ff,#7b2ff7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    button { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; margin: 8px; }
+    .btn-spawn { background: linear-gradient(135deg,#7b2ff7,#00c6ff); color: white; }
+    .btn-spawn:hover { opacity: 0.85; }
+    #log { background: #111; border: 1px solid #333; border-radius: 10px; padding: 16px; margin-top: 20px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
+    .log-ok  { color: #00e87a; }
+    .log-info{ color: #00c6ff; }
+    .log-warn{ color: #ffb347; }
+  </style>
+</head>
+<body>
+  <h1>🧪 AutoSkip Test Page</h1>
+  <p>Trang này mô phỏng các loại quảng cáo để test extension.</p>
+
+  <button class="btn-spawn" onclick="spawnUK88()">🎰 Spawn popup UK88 (như animevietsub)</button>
+  <button class="btn-spawn" onclick="spawnYouTubeSkip()">▶ Giả lập nút Skip YouTube</button>
+  <button class="btn-spawn" onclick="spawnBannerAd()">📢 Spawn banner quảng cáo</button>
+  <button class="btn-spawn" onclick="clearAll()">🗑 Xóa tất cả popup</button>
+
+  <div id="log"><span class="log-info">Đợi extension phát hiện và xử lý...</span></div>
+
+  <script>
+    // Override console.log để hiện trong log box
+    var origLog = console.log;
+    console.log = function() {
+      origLog.apply(console, arguments);
+      var msg = Array.from(arguments).join(' ');
+      if (msg.includes('AutoSkip')) {
+        var log = document.getElementById('log');
+        var line = document.createElement('div');
+        line.className = msg.includes('✅') ? 'log-ok' : msg.includes('⏳') ? 'log-warn' : 'log-info';
+        line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+        log.appendChild(line);
+        log.scrollTop = log.scrollHeight;
+      }
+    };
+
+    function spawnUK88() {
+      var popup = document.createElement('div');
+      popup.id = 'test-popup-uk88';
+      popup.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;height:360px;background:#1a1a2e;border:2px solid #444;z-index:9999;display:flex;align-items:center;justify-content:center;border-radius:8px;';
+      popup.innerHTML = `
+        <div style="text-align:center;padding:20px;position:relative">
+          <span id="uk88-close" style="position:absolute;top:-10px;right:-10px;width:28px;height:28px;background:red;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:white;font-weight:bold;" onclick="this.closest('#test-popup-uk88').remove()">×</span>
+          <div style="font-size:48px;font-weight:900;color:#00c800">UK88</div>
+          <div style="color:#ffd700;font-size:24px;font-weight:700;margin-top:8px">NHẬN THƯỞNG TO</div>
+          <div style="color:#aaa;font-size:12px;margin-top:12px">Quảng cáo test – AutoSkip sẽ tự đóng sau 1-2 giây</div>
+        </div>
+      `;
+      document.body.appendChild(popup);
+      addLog('⚠ Đã tạo popup UK88 – đợi AutoSkip xử lý...', 'warn');
+    }
+
+    function spawnYouTubeSkip() {
+      var btn = document.createElement('button');
+      btn.className = 'ytp-skip-ad-button';
+      btn.style.cssText = 'position:fixed;bottom:80px;right:20px;z-index:9999;background:#000;color:#fff;border:1px solid #fff;padding:10px 16px;font-size:14px;cursor:pointer;';
+      btn.textContent = 'Bỏ qua quảng cáo ›';
+      btn.onclick = function() { btn.remove(); addLog('✅ Nút Skip đã bị click thủ công', 'ok'); };
+      document.body.appendChild(btn);
+      addLog('⚠ Đã tạo nút Skip YouTube giả – đợi AutoSkip click...', 'warn');
+    }
+
+    function spawnBannerAd() {
+      var banner = document.createElement('div');
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;height:60px;background:linear-gradient(90deg,#c00,#f70);z-index:9998;display:flex;align-items:center;justify-content:center;';
+      banner.innerHTML = `
+        <span style="color:white;font-weight:700;font-size:18px">🔥 RED88 – CHƠI NGAY</span>
+        <span onclick="this.parentElement.remove()" style="position:absolute;right:16px;cursor:pointer;font-size:20px;color:white">×</span>
+      `;
+      document.body.appendChild(banner);
+      addLog('⚠ Đã tạo banner RED88 – đợi AutoSkip xử lý...', 'warn');
+    }
+
+    function clearAll() {
+      var p = document.getElementById('test-popup-uk88');
+      if (p) p.remove();
+      document.querySelectorAll('[style*="position:fixed"],[style*="position: fixed"]').forEach(function(el) {
+        if (el.id !== 'log' && !el.closest('#log') && el.tagName !== 'BODY') el.remove();
+      });
+      addLog('🗑 Đã xóa tất cả popup test', 'info');
+    }
+
+    function addLog(msg, type) {
+      var log = document.getElementById('log');
+      var line = document.createElement('div');
+      line.className = type === 'ok' ? 'log-ok' : type === 'warn' ? 'log-warn' : 'log-info';
+      line.textContent = new Date().toLocaleTimeString() + ' ' + msg;
+      log.appendChild(line);
+      log.scrollTop = log.scrollHeight;
+    }
+  </script>
+</body>
+</html>

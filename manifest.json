@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "AutoSkip – Tự Động Bỏ Qua Quảng Cáo",
+  "version": "1.0.0",
+  "description": "Tự động click nút bỏ qua quảng cáo ngay cả khi tab đang chạy nền. Hỗ trợ YouTube và nhiều trang video khác.",
+  "icons": {
+    "16":  "icon16.png",
+    "32":  "icon32.png",
+    "48":  "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_icon": {
+      "16":  "icon16.png",
+      "32":  "icon32.png",
+      "48":  "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "AutoSkip – Click để bật/tắt"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "windows"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "commands": {
+    "open-popup": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Alt+Shift+S"
+      },
+      "description": "Mở bảng điều khiển AutoSkip"
+    }
+  }
+}

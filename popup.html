@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoSkip</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <img src="icon48.png" alt="AutoSkip" class="logo" />
+      <div class="header-text">
+        <h1 class="title">AutoSkip</h1>
+        <span class="subtitle">Tự động bỏ qua quảng cáo</span>
+      </div>
+    </div>
+
+    <!-- Main Toggle -->
+    <div class="toggle-card">
+      <div class="toggle-info">
+        <span class="toggle-label" id="status-label">Đang bật</span>
+        <span class="toggle-desc">Click skip ngay cả khi tab ở nền</span>
+      </div>
+      <label class="switch" for="toggle-btn" aria-label="Bật/Tắt AutoSkip">
+        <input type="checkbox" id="toggle-btn" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card" id="stat-session">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value" id="skip-count">0</div>
+        <div class="stat-label">Quảng cáo đã skip</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏱</div>
+        <div class="stat-value" id="time-saved">0s</div>
+        <div class="stat-label">Thời gian tiết kiệm</div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar" id="status-bar">
+      <div class="pulse" id="pulse-dot"></div>
+      <span id="status-text">Đang theo dõi quảng cáo...</span>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-ghost" id="reset-btn" title="Đặt lại bộ đếm">
+        🔄 Đặt lại
+      </button>
+      <button class="btn btn-primary" id="sites-btn">
+        🌐 Trang hỗ trợ
+      </button>
+    </div>
+
+    <!-- Sites list (hidden by default) -->
+    <div class="sites-list" id="sites-list" hidden>
+      <div class="sites-title">Trang được hỗ trợ:</div>
+      <div class="sites-grid">
+        <span class="site-badge">▶ YouTube</span>
+        <span class="site-badge">📘 Facebook</span>
+        <span class="site-badge">🎵 TikTok</span>
+        <span class="site-badge">🎮 Twitch</span>
+        <span class="site-badge">🎬 Vimeo</span>
+        <span class="site-badge">📺 VTV</span>
+        <span class="site-badge">🎥 DailyMotion</span>
+        <span class="site-badge">🌐 Và nhiều hơn...</span>
+      </div>
+    </div>
+
+    <div class="footer">v1.0.0 · AutoSkip by Antigravity</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
