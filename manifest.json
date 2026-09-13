@@ -38,7 +38,11 @@
       "exclude_matches": [
         "*://*.youtube.com/*",
         "*://m.youtube.com/*",
-        "*://music.youtube.com/*"
+        "*://music.youtube.com/*",
+        "*://*.facebook.com/*",
+        "*://facebook.com/*",
+        "*://*.instagram.com/*",
+        "*://instagram.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",
