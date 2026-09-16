@@ -42,7 +42,9 @@
         "*://*.facebook.com/*",
         "*://facebook.com/*",
         "*://*.instagram.com/*",
-        "*://instagram.com/*"
+        "*://instagram.com/*",
+        "*://*.leetcode.com/*",
+        "*://leetcode.com/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",
