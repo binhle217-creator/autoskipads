@@ -257,6 +257,47 @@ function tryFastForwardAd() {
 }
 
 // ============================================================
+// ĐÓNG POPUP ANTI-ADBLOCK (YouTube không cho phép trình chặn QC)
+// ============================================================
+function closeAntiAdblockPopup() {
+  if (!isEnabled) return;
+  var dialogs = document.querySelectorAll('tp-yt-paper-dialog, ytd-popup-container');
+  var foundPopup = false;
+  
+  for (var i = 0; i < dialogs.length; i++) {
+    var dialog = dialogs[i];
+    if (!isVisible(dialog)) continue;
+    
+    var text = (dialog.textContent || '').toLowerCase();
+    if (text.indexOf('trình chặn quảng cáo') !== -1 || 
+        text.indexOf('ad blocker') !== -1 ||
+        text.indexOf('ad blockers') !== -1) {
+      
+      foundPopup = true;
+      var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
+      
+      if (closeBtn && isVisible(closeBtn)) {
+         clickElement(closeBtn);
+         console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
+      } else {
+         dialog.remove();
+         var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+         for (var b = 0; b < backdrops.length; b++) backdrops[b].remove();
+         console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
+      }
+    }
+  }
+  
+  if (foundPopup) {
+    var video = document.querySelector('video');
+    if (video && video.paused) {
+      video.play().catch(function(e) {});
+      console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi tắt popup!');
+    }
+  }
+}
+
+// ============================================================
 // OBSERVER – Theo dõi DOM (YouTube là SPA, dùng pushState)
 // ============================================================
 function startObserver() {
@@ -266,6 +307,7 @@ function startObserver() {
   mutationObserver = new MutationObserver(function(mutations) {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
+        closeAntiAdblockPopup();
         trySkip();
         tryFastForwardAd();
         break;
@@ -290,6 +332,7 @@ function startInterval() {
   if (checkInterval) return;
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
+    closeAntiAdblockPopup();
     trySkip();
     tryFastForwardAd();
   }, 300);
