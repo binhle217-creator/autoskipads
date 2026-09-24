@@ -337,10 +337,9 @@ function trySkip() {
 }
 
 // ============================================================
-// CORE – Tua nhanh quảng cáo (Chế độ Ẩn mình - Stealth)
+// CORE – Tua nhanh quảng cáo (2 Chế độ)
 // ============================================================
 var _adWasActive = false; // Theo dõi trạng thái quảng cáo
-var _shieldTimeout = null;
 
 function tryFastForwardAd() {
   if (!isEnabled) return;
@@ -356,33 +355,32 @@ function tryFastForwardAd() {
   if (!video) return;
 
   if (adShowing) {
-    if (_shieldTimeout) { clearTimeout(_shieldTimeout); _shieldTimeout = null; }
-    activateAntiPauseShield(); // Bật Shield lúc có QC
     _adWasActive = true;
-    
-    // Có Shield bảo vệ → Thoải mái tua bạo lực
-    video.playbackRate = 16;
     video.muted = true;
-    if (video.paused) video.play().catch(function(e) {});
     
-    // Nhảy thẳng đến cuối quảng cáo (Shield chặn YouTube trả thù)
-    if (video.currentTime < video.duration - 0.5) {
-      video.currentTime = video.duration - 0.1;
-      console.log('[AutoSkip YT] ⏩🛡️ Nhảy thẳng cuối QC + x16 (Shield bảo vệ)');
+    if (_shieldActive) {
+      // 🛡️ CHẾ ĐỘ BẠO LỰC (Có Shield bảo vệ)
+      video.playbackRate = 16;
+      if (video.paused) video.play().catch(function(e) {});
+      
+      if (video.currentTime < video.duration - 0.5) {
+        video.currentTime = video.duration - 0.1;
+        console.log('[AutoSkip YT] ⏩🛡️ Nhảy thẳng cuối QC + x16 (Shield BẬT)');
+      }
+    } else {
+      // 🌙 CHẾ ĐỘ NGỦ / ẨN MÌNH (Shield TẮT - Cho phép Hẹn giờ ngủ)
+      if (video.playbackRate < 7) {
+        video.playbackRate = 8;
+        console.log('[AutoSkip YT] ⏩🌙 Stealth mode: Tua x8, không nhảy thời gian (Shield TẮT)');
+      }
     }
+    
   } else if (_adWasActive) {
     // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
     _adWasActive = false;
     video.playbackRate = 1;
     video.muted = false;
-    
-    // Giữ Shield thêm 3 giây để chặn YouTube trả thù sau quảng cáo
-    _shieldTimeout = setTimeout(function() {
-      deactivateAntiPauseShield();
-      console.log('[AutoSkip YT] 🛡️ Đã hạ Shield an toàn (Hẹn giờ ngủ đã có thể hoạt động).');
-    }, 3000);
-    
-    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc (Shield sẽ tự hạ sau 3s)');
+    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc, đã khôi phục tốc độ + âm thanh');
   }
 }
 
