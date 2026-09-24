@@ -257,14 +257,14 @@ function tryFastForwardAd() {
   var video = document.querySelector(VIDEO_SELECTOR);
   if (video && !video.ended && isFinite(video.duration) && video.duration > 0) {
     if (video.currentTime < video.duration - 0.5) {
-      // Tốc độ x16 (mức tối đa Chrome cho phép)
+      // Ép tốc độ x16 + unmute + play (lần đầu)
       video.playbackRate = 16;
       video.muted = true;
       if (video.paused) video.play().catch(function(e) {});
       
-      // Micro-skip: nhảy thêm 2 giây mỗi 100ms (tương đương thêm ~20x nữa)
-      // Tổng hiệu quả: 16x + 20x = ~36x tốc độ thật
-      // YouTube không phạt vì mỗi bước nhảy rất nhỏ (giống kéo thanh tiến trình)
+      // Micro-skip + Anti-Reset Loop
+      // Mỗi 100ms: nhảy 2s + ép lại tốc độ x16 + ép Play
+      // Chống YouTube liên tục reset tốc độ và Pause video
       if (!video.__autoskip_microskip) {
         video.__autoskip_microskip = setInterval(function() {
           if (!video || video.ended || video.currentTime >= video.duration - 0.5) {
@@ -280,11 +280,15 @@ function tryFastForwardAd() {
             clearInterval(video.__autoskip_microskip);
             video.__autoskip_microskip = null;
             video.playbackRate = 1;
+            video.muted = false;
             return;
           }
+          // ÉP LẠI mỗi 100ms (chống YouTube reset về 1x)
+          if (video.playbackRate < 10) video.playbackRate = 16;
+          if (video.paused) video.play().catch(function(e) {});
           video.currentTime = Math.min(video.currentTime + 2, video.duration - 0.1);
         }, 100);
-        console.log('[AutoSkip YT] ⏩🔥 Turbo mode: x16 + micro-skip (~36x hiệu quả)');
+        console.log('[AutoSkip YT] ⏩🔥 Turbo mode + Anti-Reset: Liên tục ép x16 + micro-skip');
       }
     } else {
       // Quảng cáo sắp hết
@@ -293,6 +297,7 @@ function tryFastForwardAd() {
         video.__autoskip_microskip = null;
       }
       video.playbackRate = 1;
+      video.muted = false;
       if (video.paused && adShowing) video.play().catch(function(e) {});
     }
   }
