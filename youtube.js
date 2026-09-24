@@ -256,10 +256,10 @@ function tryFastForwardAd() {
 
   var video = document.querySelector(VIDEO_SELECTOR);
   if (video && !video.ended && isFinite(video.duration) && video.duration > 0) {
-    // Nếu video còn dài hơn 0.5s -> Ép tua nhanh đến sát cuối (0.1s)
+    // Nếu video còn dài hơn 0.5s -> Ép tua nhanh tốc độ (bỏ qua currentTime để tránh bị phát hiện)
     if (video.currentTime < video.duration - 0.5) {
       console.log('[AutoSkip YT] ⏩ Ép tua nhanh quảng cáo...');
-      video.currentTime = video.duration - 0.1;
+      // video.currentTime = video.duration - 0.1; // ĐÃ XOÁ: YouTube phát hiện nhảy thời gian sẽ phạt Pause video
       video.playbackRate = 16;
       video.muted = true;
       if (video.paused) video.play().catch(function(e) {});
