@@ -90,44 +90,65 @@ async function callGemini(model, contents, apiKey) {
   recordRequest();
 
   const url = `${API_BASE}/${model}:generateContent?key=${apiKey}`;
+  const MAX_RETRIES = 2;
 
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: contents }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 100,
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.warn('[AutoSkip AI] ⚠️ Bị giới hạn API (429), tạm dừng gửi request trong 60s.');
-        backoffUntil = Date.now() + 60000; // Ngừng 60 giây
-      }
-      const errText = await response.text();
-      console.error('[AutoSkip AI] API error:', response.status, errText);
-      return null;
-    }
-
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      return JSON.parse(text);
-    } catch {
-      console.warn('[AutoSkip AI] Không parse được JSON:', text);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: contents }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 100,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('[AutoSkip AI] ⚠️ Bị giới hạn API (429), tạm dừng gửi request trong 60s.');
+          backoffUntil = Date.now() + 60000;
+          return null;
+        }
+        if (response.status === 503 && attempt < MAX_RETRIES) {
+          const waitMs = (attempt + 1) * 3000; // 3s, 6s
+          console.warn(`[AutoSkip AI] ⏳ Server quá tải (503), thử lại sau ${waitMs/1000}s... (lần ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise(r => setTimeout(r, waitMs));
+          continue; // Thử lại
+        }
+        if (response.status === 503) {
+          console.warn('[AutoSkip AI] ⚠️ Server vẫn quá tải sau khi thử lại, tạm dừng 30s.');
+          backoffUntil = Date.now() + 30000;
+          return null;
+        }
+        const errText = await response.text();
+        console.error('[AutoSkip AI] API error:', response.status, errText);
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        console.warn('[AutoSkip AI] Không parse được JSON:', text);
+        return null;
+      }
+    } catch (err) {
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[AutoSkip AI] ⏳ Lỗi mạng, thử lại... (lần ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise(r => setTimeout(r, 2000));
+        continue;
+      }
+      console.error('[AutoSkip AI] Fetch error:', err);
       return null;
     }
-  } catch (err) {
-    console.error('[AutoSkip AI] Fetch error:', err);
-    return null;
   }
+  return null;
 }
 
 // ============================================================
