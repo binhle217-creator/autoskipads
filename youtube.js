@@ -228,78 +228,38 @@ function trySkip() {
 }
 
 // ============================================================
-// CORE – Tua nhanh MỌI quảng cáo (Bypass chế độ chặn click)
+// CORE – Tua nhanh quảng cáo (Chế độ Ẩn mình - Stealth)
 // ============================================================
+var _adWasActive = false; // Theo dõi trạng thái quảng cáo
+
 function tryFastForwardAd() {
   if (!isEnabled) return;
   
   var adShowing = false;
   var player = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
   
-  if (player) {
-    // YT thường gắn class ad-showing vào thẳng player khi có QC
-    if (player.classList.contains('ad-showing')) {
-      adShowing = true;
-    } else {
-      // Hoặc check các phần tử con báo hiệu QC có đang hiển thị không
-      for (var i = 0; i < YT_AD_PLAYING_SELECTORS.length; i++) {
-        var el = player.querySelector(YT_AD_PLAYING_SELECTORS[i]);
-        if (el && isVisible(el)) {
-          adShowing = true;
-          break;
-        }
-      }
-    }
+  if (player && player.classList.contains('ad-showing')) {
+    adShowing = true;
   }
 
-  if (!adShowing) return;
-
   var video = document.querySelector(VIDEO_SELECTOR);
-  if (video && !video.ended && isFinite(video.duration) && video.duration > 0) {
-    if (video.currentTime < video.duration - 0.5) {
-      // Ép tốc độ x16 + unmute + play (lần đầu)
-      video.playbackRate = 16;
-      video.muted = true;
-      if (video.paused) video.play().catch(function(e) {});
-      
-      // Micro-skip + Anti-Reset Loop
-      // Mỗi 100ms: nhảy 2s + ép lại tốc độ x16 + ép Play
-      // Chống YouTube liên tục reset tốc độ và Pause video
-      if (!video.__autoskip_microskip) {
-        video.__autoskip_microskip = setInterval(function() {
-          if (!video || video.ended || video.currentTime >= video.duration - 0.5) {
-            clearInterval(video.__autoskip_microskip);
-            video.__autoskip_microskip = null;
-            return;
-          }
-          // Kiểm tra lại xem quảng cáo còn chạy không
-          var stillAd = false;
-          var p = document.querySelector('#movie_player');
-          if (p && p.classList.contains('ad-showing')) stillAd = true;
-          if (!stillAd) {
-            clearInterval(video.__autoskip_microskip);
-            video.__autoskip_microskip = null;
-            video.playbackRate = 1;
-            video.muted = false;
-            return;
-          }
-          // ÉP LẠI mỗi 100ms (chống YouTube reset về 1x)
-          if (video.playbackRate < 10) video.playbackRate = 16;
-          if (video.paused) video.play().catch(function(e) {});
-          video.currentTime = Math.min(video.currentTime + 2, video.duration - 0.1);
-        }, 100);
-        console.log('[AutoSkip YT] ⏩🔥 Turbo mode + Anti-Reset: Liên tục ép x16 + micro-skip');
-      }
-    } else {
-      // Quảng cáo sắp hết
-      if (video.__autoskip_microskip) {
-        clearInterval(video.__autoskip_microskip);
-        video.__autoskip_microskip = null;
-      }
-      video.playbackRate = 1;
-      video.muted = false;
-      if (video.paused && adShowing) video.play().catch(function(e) {});
+  if (!video) return;
+
+  if (adShowing) {
+    _adWasActive = true;
+    // Stealth: Chỉ tăng tốc vừa phải (x8) + tắt tiếng
+    // KHÔNG can thiệp currentTime để tránh bị YouTube trả thù
+    if (video.playbackRate < 7) {
+      video.playbackRate = 8;
+      console.log('[AutoSkip YT] ⏩ Stealth mode: Tua quảng cáo x8');
     }
+    video.muted = true;
+  } else if (_adWasActive) {
+    // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
+    _adWasActive = false;
+    video.playbackRate = 1;
+    video.muted = false;
+    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc, đã khôi phục tốc độ + âm thanh');
   }
 }
 
