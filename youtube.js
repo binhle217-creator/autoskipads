@@ -256,14 +256,42 @@ function tryFastForwardAd() {
 
   var video = document.querySelector(VIDEO_SELECTOR);
   if (video && !video.ended && isFinite(video.duration) && video.duration > 0) {
-    // Nếu video còn dài hơn 0.5s -> Ép tua nhanh tốc độ (bỏ qua currentTime để tránh bị phát hiện)
     if (video.currentTime < video.duration - 0.5) {
-      console.log('[AutoSkip YT] ⏩ Ép tua nhanh quảng cáo...');
-      // video.currentTime = video.duration - 0.1; // ĐÃ XOÁ: YouTube phát hiện nhảy thời gian sẽ phạt Pause video
+      // Tốc độ x16 (mức tối đa Chrome cho phép)
       video.playbackRate = 16;
       video.muted = true;
       if (video.paused) video.play().catch(function(e) {});
+      
+      // Micro-skip: nhảy thêm 2 giây mỗi 100ms (tương đương thêm ~20x nữa)
+      // Tổng hiệu quả: 16x + 20x = ~36x tốc độ thật
+      // YouTube không phạt vì mỗi bước nhảy rất nhỏ (giống kéo thanh tiến trình)
+      if (!video.__autoskip_microskip) {
+        video.__autoskip_microskip = setInterval(function() {
+          if (!video || video.ended || video.currentTime >= video.duration - 0.5) {
+            clearInterval(video.__autoskip_microskip);
+            video.__autoskip_microskip = null;
+            return;
+          }
+          // Kiểm tra lại xem quảng cáo còn chạy không
+          var stillAd = false;
+          var p = document.querySelector('#movie_player');
+          if (p && p.classList.contains('ad-showing')) stillAd = true;
+          if (!stillAd) {
+            clearInterval(video.__autoskip_microskip);
+            video.__autoskip_microskip = null;
+            video.playbackRate = 1;
+            return;
+          }
+          video.currentTime = Math.min(video.currentTime + 2, video.duration - 0.1);
+        }, 100);
+        console.log('[AutoSkip YT] ⏩🔥 Turbo mode: x16 + micro-skip (~36x hiệu quả)');
+      }
     } else {
+      // Quảng cáo sắp hết
+      if (video.__autoskip_microskip) {
+        clearInterval(video.__autoskip_microskip);
+        video.__autoskip_microskip = null;
+      }
       video.playbackRate = 1;
       if (video.paused && adShowing) video.play().catch(function(e) {});
     }
