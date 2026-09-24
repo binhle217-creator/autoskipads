@@ -250,16 +250,18 @@ function tryFastForwardAd() {
       video.currentTime = video.duration - 0.1;
       video.playbackRate = 16;
       video.muted = true;
+      if (video.paused) video.play().catch(function(e) {});
     } else {
       video.playbackRate = 1;
+      if (video.paused && adShowing) video.play().catch(function(e) {});
     }
   }
 }
 
 // ============================================================
-// ĐÓNG POPUP ANTI-ADBLOCK (YouTube không cho phép trình chặn QC)
+// ĐÓNG CÁC POPUP GÂY PHIỀN (Anti-Adblock, Continue Watching...)
 // ============================================================
-function closeAntiAdblockPopup() {
+function closeAnnoyingPopups() {
   if (!isEnabled) return;
   var dialogs = document.querySelectorAll('tp-yt-paper-dialog, ytd-popup-container');
   var foundPopup = false;
@@ -269,30 +271,51 @@ function closeAntiAdblockPopup() {
     if (!isVisible(dialog)) continue;
     
     var text = (dialog.textContent || '').toLowerCase();
-    if (text.indexOf('trình chặn quảng cáo') !== -1 || 
-        text.indexOf('ad blocker') !== -1 ||
-        text.indexOf('ad blockers') !== -1) {
-      
+    var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || text.indexOf('ad blocker') !== -1 || text.indexOf('ad blockers') !== -1;
+    var isContinueWatching = text.indexOf('tiếp tục xem') !== -1 || text.indexOf('continue watching') !== -1 || text.indexOf('video đã tạm dừng') !== -1 || text.indexOf('video paused') !== -1;
+    
+    if (isAntiAdblock || isContinueWatching) {
       foundPopup = true;
-      var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
       
-      if (closeBtn && isVisible(closeBtn)) {
-         clickElement(closeBtn);
-         console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
-      } else {
-         dialog.remove();
-         var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
-         for (var b = 0; b < backdrops.length; b++) backdrops[b].remove();
-         console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
+      // Nếu là Continue Watching, tìm nút Yes/Có/Tiếp tục
+      if (isContinueWatching) {
+        var buttons = dialog.querySelectorAll('button');
+        var clicked = false;
+        for (var b = 0; b < buttons.length; b++) {
+          var btnText = (buttons[b].textContent || '').toLowerCase();
+          if (btnText.indexOf('có') !== -1 || btnText.indexOf('yes') !== -1 || btnText.indexOf('tiếp tục') !== -1) {
+            clickElement(buttons[b]);
+            console.log('[AutoSkip YT] ✅ Đã tự động chọn "Tiếp tục xem"!');
+            clicked = true;
+            break;
+          }
+        }
+        if (!clicked) {
+           dialog.remove(); // Fallback
+        }
+      } 
+      // Nếu là Anti-Adblock
+      else if (isAntiAdblock) {
+        var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
+        if (closeBtn && isVisible(closeBtn)) {
+           clickElement(closeBtn);
+           console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
+        } else {
+           dialog.remove();
+           var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+           for (var bd = 0; bd < backdrops.length; bd++) backdrops[bd].remove();
+           console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
+        }
       }
     }
   }
   
+  // Ép phát lại video nếu có popup gây dừng
   if (foundPopup) {
     var video = document.querySelector('video');
     if (video && video.paused) {
       video.play().catch(function(e) {});
-      console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi tắt popup!');
+      console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi xử lý popup!');
     }
   }
 }
@@ -307,7 +330,7 @@ function startObserver() {
   mutationObserver = new MutationObserver(function(mutations) {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
-        closeAntiAdblockPopup();
+        closeAnnoyingPopups();
         trySkip();
         tryFastForwardAd();
         break;
@@ -332,7 +355,7 @@ function startInterval() {
   if (checkInterval) return;
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
-    closeAntiAdblockPopup();
+    closeAnnoyingPopups();
     trySkip();
     tryFastForwardAd();
   }, 300);
