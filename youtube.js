@@ -112,6 +112,50 @@ function notifyBackground() {
 }
 
 // ============================================================
+// ANTI-PAUSE SHIELD – Chặn YouTube ép dừng video
+// ============================================================
+var _shieldActive = false;
+var _originalPause = null;
+
+function activateAntiPauseShield() {
+  if (_shieldActive) return;
+  
+  var video = document.querySelector(VIDEO_SELECTOR);
+  if (!video) return;
+  
+  // Lưu hàm pause() gốc
+  _originalPause = video.pause.bind(video);
+  
+  // Ghi đè hàm pause() → YouTube gọi pause() sẽ bị chặn
+  video.pause = function() {
+    console.log('[AutoSkip YT] 🛡️ CHẶN lệnh pause từ YouTube!');
+    // Không làm gì cả → Video tiếp tục chạy
+  };
+  
+  // Lắng nghe sự kiện pause (phòng trường hợp YouTube dùng cách khác)
+  video.addEventListener('pause', function antiPauseHandler() {
+    if (!isEnabled || !_shieldActive) return;
+    // Ép play lại ngay lập tức
+    setTimeout(function() {
+      if (_shieldActive && video.paused) {
+        video.play().catch(function(e) {});
+        console.log('[AutoSkip YT] 🛡️ Đã ép Play lại sau khi bị pause!');
+      }
+    }, 50);
+  });
+  
+  _shieldActive = true;
+  console.log('[AutoSkip YT] 🛡️ Anti-Pause Shield ĐÃ BẬT! YouTube không thể dừng video.');
+}
+
+// Kích hoạt shield khi tìm thấy video
+function tryActivateShield() {
+  if (_shieldActive) return;
+  var video = document.querySelector(VIDEO_SELECTOR);
+  if (video) activateAntiPauseShield();
+}
+
+// ============================================================
 // TÌM NÚT SKIP BẰNG TEXT (fallback cực mạnh khi bị obfuscate)
 // ============================================================
 function findSkipByText() {
@@ -247,13 +291,14 @@ function tryFastForwardAd() {
 
   if (adShowing) {
     _adWasActive = true;
-    // Stealth: Chỉ tăng tốc vừa phải (x8) + tắt tiếng
-    // KHÔNG can thiệp currentTime để tránh bị YouTube trả thù
-    if (video.playbackRate < 7) {
-      video.playbackRate = 8;
-      console.log('[AutoSkip YT] ⏩ Stealth mode: Tua quảng cáo x8');
+    // Bật Shield trước → YouTube không thể pause
+    // Sau đó thoải mái tua x16
+    if (video.playbackRate < 10) {
+      video.playbackRate = 16;
+      console.log('[AutoSkip YT] ⏩🛡️ Tua quảng cáo x16 (có Shield bảo vệ)');
     }
     video.muted = true;
+    if (video.paused) video.play().catch(function(e) {});
   } else if (_adWasActive) {
     // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
     _adWasActive = false;
@@ -335,6 +380,7 @@ function startObserver() {
   mutationObserver = new MutationObserver(function(mutations) {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
+        tryActivateShield();
         closeAnnoyingPopups();
         trySkip();
         tryFastForwardAd();
@@ -360,6 +406,7 @@ function startInterval() {
   if (checkInterval) return;
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
+    tryActivateShield();
     closeAnnoyingPopups();
     trySkip();
     tryFastForwardAd();
