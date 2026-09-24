@@ -234,12 +234,24 @@ function tryFastForwardAd() {
   if (!isEnabled) return;
   
   var adShowing = false;
-  for (var i = 0; i < YT_AD_PLAYING_SELECTORS.length; i++) {
-    if (document.querySelector(YT_AD_PLAYING_SELECTORS[i])) {
+  var player = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
+  
+  if (player) {
+    // YT thường gắn class ad-showing vào thẳng player khi có QC
+    if (player.classList.contains('ad-showing')) {
       adShowing = true;
-      break;
+    } else {
+      // Hoặc check các phần tử con báo hiệu QC có đang hiển thị không
+      for (var i = 0; i < YT_AD_PLAYING_SELECTORS.length; i++) {
+        var el = player.querySelector(YT_AD_PLAYING_SELECTORS[i]);
+        if (el && isVisible(el)) {
+          adShowing = true;
+          break;
+        }
+      }
     }
   }
+
   if (!adShowing) return;
 
   var video = document.querySelector(VIDEO_SELECTOR);
