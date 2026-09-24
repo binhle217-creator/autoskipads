@@ -217,9 +217,7 @@ document.addEventListener('keydown', function(e) {
 
 // Kích hoạt shield khi tìm thấy video
 function tryActivateShield() {
-  if (_shieldActive) return;
-  var video = document.querySelector(VIDEO_SELECTOR);
-  if (video) activateAntiPauseShield();
+  // Đã bỏ tính năng tự động bật toàn cục. Shield giờ chỉ bật lúc có quảng cáo.
 }
 
 // ============================================================
@@ -342,6 +340,7 @@ function trySkip() {
 // CORE – Tua nhanh quảng cáo (Chế độ Ẩn mình - Stealth)
 // ============================================================
 var _adWasActive = false; // Theo dõi trạng thái quảng cáo
+var _shieldTimeout = null;
 
 function tryFastForwardAd() {
   if (!isEnabled) return;
@@ -357,11 +356,15 @@ function tryFastForwardAd() {
   if (!video) return;
 
   if (adShowing) {
+    if (_shieldTimeout) { clearTimeout(_shieldTimeout); _shieldTimeout = null; }
+    activateAntiPauseShield(); // Bật Shield lúc có QC
     _adWasActive = true;
+    
     // Có Shield bảo vệ → Thoải mái tua bạo lực
     video.playbackRate = 16;
     video.muted = true;
     if (video.paused) video.play().catch(function(e) {});
+    
     // Nhảy thẳng đến cuối quảng cáo (Shield chặn YouTube trả thù)
     if (video.currentTime < video.duration - 0.5) {
       video.currentTime = video.duration - 0.1;
@@ -372,7 +375,14 @@ function tryFastForwardAd() {
     _adWasActive = false;
     video.playbackRate = 1;
     video.muted = false;
-    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc, đã khôi phục tốc độ + âm thanh');
+    
+    // Giữ Shield thêm 3 giây để chặn YouTube trả thù sau quảng cáo
+    _shieldTimeout = setTimeout(function() {
+      deactivateAntiPauseShield();
+      console.log('[AutoSkip YT] 🛡️ Đã hạ Shield an toàn (Hẹn giờ ngủ đã có thể hoạt động).');
+    }, 3000);
+    
+    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc (Shield sẽ tự hạ sau 3s)');
   }
 }
 
@@ -448,7 +458,6 @@ function startObserver() {
   mutationObserver = new MutationObserver(function(mutations) {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
-        tryActivateShield();
         closeAnnoyingPopups();
         trySkip();
         tryFastForwardAd();
@@ -474,7 +483,6 @@ function startInterval() {
   if (checkInterval) return;
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
-    tryActivateShield();
     closeAnnoyingPopups();
     trySkip();
     tryFastForwardAd();
