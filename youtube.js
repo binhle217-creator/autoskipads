@@ -114,14 +114,14 @@ function notifyBackground() {
 // ============================================================
 // ANTI-PAUSE SHIELD – Chặn YouTube ép dừng video
 // ============================================================
-var _shieldActive = false;
 var _originalPause = null;
 var _pauseEventHandler = null;
 
 function activateAntiPauseShield() {
   var video = document.querySelector(VIDEO_SELECTOR);
   if (!video) return;
-  if (_shieldActive) return;
+  if (_shieldInjected) return;
+  if (!_shieldActive) return; // Nếu user đã tắt trong Popup thì không bật
   
   // Lưu hàm pause() gốc
   _originalPause = video.pause.bind(video);
@@ -133,9 +133,9 @@ function activateAntiPauseShield() {
   
   // Lắng nghe sự kiện pause
   _pauseEventHandler = function() {
-    if (!isEnabled || !_shieldActive) return;
+    if (!isEnabled || !_shieldInjected) return;
     setTimeout(function() {
-      if (_shieldActive && video.paused) {
+      if (_shieldInjected && video.paused) {
         video.play().catch(function(e) {});
         console.log('[AutoSkip YT] 🛡️ Đã ép Play lại sau khi bị pause!');
       }
@@ -143,9 +143,8 @@ function activateAntiPauseShield() {
   };
   video.addEventListener('pause', _pauseEventHandler);
   
-  _shieldActive = true;
+  _shieldInjected = true;
   console.log('[AutoSkip YT] 🛡️ Anti-Pause Shield ĐÃ BẬT!');
-  showShieldToast(true);
 }
 
 function deactivateAntiPauseShield() {
@@ -164,60 +163,8 @@ function deactivateAntiPauseShield() {
     _pauseEventHandler = null;
   }
   
-  _shieldActive = false;
+  _shieldInjected = false;
   console.log('[AutoSkip YT] 🛡️ Anti-Pause Shield ĐÃ TẮT. Bạn có thể pause thủ công.');
-  showShieldToast(false);
-}
-
-function toggleShield() {
-  if (_shieldActive) {
-    deactivateAntiPauseShield();
-  } else {
-    activateAntiPauseShield();
-  }
-}
-
-// Toast thông báo trạng thái Shield
-function showShieldToast(isOn) {
-  var existing = document.getElementById('__autoskip_shield_toast__');
-  if (existing) existing.remove();
-  
-  var toast = document.createElement('div');
-  toast.id = '__autoskip_shield_toast__';
-  toast.textContent = isOn ? '🛡️ Shield BẬT – YouTube không thể pause' : '⏸️ Shield TẮT – Bạn có thể pause thủ công';
-  toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:999999;' +
-    'padding:12px 24px;border-radius:30px;font-size:14px;font-weight:600;color:#fff;' +
-    'background:' + (isOn ? 'rgba(34,197,94,0.9)' : 'rgba(239,68,68,0.9)') + ';' +
-    'box-shadow:0 4px 20px rgba(0,0,0,0.3);pointer-events:none;transition:opacity 0.5s;';
-  document.body.appendChild(toast);
-  setTimeout(function() { toast.style.opacity = '0'; }, 2000);
-  setTimeout(function() { toast.remove(); }, 2500);
-}
-
-// PHÍM TẮT: Nhấn đúp Shift để bật/tắt Shield
-var _lastShiftTime = 0;
-document.addEventListener('keydown', function(e) {
-  // Bỏ qua nếu đang gõ chữ trong ô tìm kiếm / bình luận
-  var tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
-  
-  if (e.key === 'Shift') {
-    var now = Date.now();
-    if (now - _lastShiftTime < 400) {
-      // Nhấn đúp Shift!
-      e.preventDefault();
-      e.stopPropagation();
-      toggleShield();
-      _lastShiftTime = 0;
-    } else {
-      _lastShiftTime = now;
-    }
-  }
-}, true); // Dùng capture phase để chặn trước YouTube
-
-// Kích hoạt shield khi tìm thấy video
-function tryActivateShield() {
-  // Đã bỏ tính năng tự động bật toàn cục. Shield giờ chỉ bật lúc có quảng cáo.
 }
 
 // ============================================================

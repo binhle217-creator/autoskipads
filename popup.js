@@ -17,6 +17,7 @@ const resetBtn    = document.getElementById('reset-btn');
 const sitesBtn    = document.getElementById('sites-btn');
 const sitesList   = document.getElementById('sites-list');
 const adTabBtn    = document.getElementById('adtab-btn');
+const shieldBtn   = document.getElementById('shield-btn');
 const apiKeyInput = document.getElementById('api-key-input');
 const saveKeyBtn  = document.getElementById('save-key-btn');
 const aiStatus    = document.getElementById('ai-status');
@@ -30,10 +31,12 @@ function init() {
   chrome.storage.sync.get({
     enabled: true,
     autoCloseAdTabs: false,
+    shieldEnabled: true,
     geminiApiKey: '',
   }, (data) => {
     toggleBtn.checked = data.enabled;
     adTabBtn.checked = data.autoCloseAdTabs;
+    shieldBtn.checked = data.shieldEnabled;
     updateUI(data.enabled);
     updateAiStatus(data.geminiApiKey);
     if (data.geminiApiKey) {
@@ -52,6 +55,9 @@ function init() {
     }
     if (changes.autoCloseAdTabs !== undefined) {
       adTabBtn.checked = changes.autoCloseAdTabs.newValue;
+    }
+    if (changes.shieldEnabled !== undefined) {
+      shieldBtn.checked = changes.shieldEnabled.newValue;
     }
     if (changes.geminiApiKey !== undefined) {
       updateAiStatus(changes.geminiApiKey.newValue);
@@ -143,6 +149,10 @@ adTabBtn.addEventListener('change', () => {
   const autoClose = adTabBtn.checked;
   chrome.storage.sync.set({ autoCloseAdTabs: autoClose });
   chrome.runtime.sendMessage({ type: 'SET_AUTO_CLOSE_TABS', autoClose });
+});
+
+shieldBtn.addEventListener('change', () => {
+  chrome.storage.sync.set({ shieldEnabled: shieldBtn.checked });
 });
 
 // ============================================================
