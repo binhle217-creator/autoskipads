@@ -52,11 +52,28 @@ var SKIP_TEXT_PATTERNS = ['bỏ qua', 'skip', 'skip ad', 'skip ads', 'passer'];
 // STATE
 // ============================================================
 var isEnabled = true;
+var _shieldActive = true; // Bật/Tắt từ Popup UI
+var _shieldInjected = false; // Trạng thái thực tế
 var skipCount = 0;
 var pendingSkip = false;
 var checkInterval = null;
 var observerActive = false;
 var mutationObserver = null;
+
+// Lấy cài đặt từ Popup
+chrome.storage.sync.get({ enabled: true, shieldEnabled: true }, function(data) {
+  isEnabled = data.enabled;
+  _shieldActive = data.shieldEnabled;
+});
+
+// Lắng nghe thay đổi cài đặt từ Popup
+chrome.storage.onChanged.addListener(function(changes) {
+  if (changes.enabled) isEnabled = changes.enabled.newValue;
+  if (changes.shieldEnabled) {
+    _shieldActive = changes.shieldEnabled.newValue;
+    if (!_shieldActive) deactivateAntiPauseShield();
+  }
+});
 
 // ============================================================
 // HELPERS
