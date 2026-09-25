@@ -52,7 +52,6 @@ var SKIP_TEXT_PATTERNS = ['bỏ qua', 'skip', 'skip ad', 'skip ads', 'passer'];
 // STATE
 // ============================================================
 var isEnabled = true;
-var _shieldActive = true; // Bật/Tắt từ Popup UI
 var _shieldInjected = false; // Trạng thái thực tế
 var skipCount = 0;
 var pendingSkip = false;
@@ -61,17 +60,17 @@ var observerActive = false;
 var mutationObserver = null;
 
 // Lấy cài đặt từ Popup
-chrome.storage.sync.get({ enabled: true, shieldEnabled: true }, function(data) {
+chrome.storage.sync.get({ enabled: true }, function(data) {
   isEnabled = data.enabled;
-  _shieldActive = data.shieldEnabled;
 });
 
 // Lắng nghe thay đổi cài đặt từ Popup
 chrome.storage.onChanged.addListener(function(changes) {
-  if (changes.enabled) isEnabled = changes.enabled.newValue;
-  if (changes.shieldEnabled) {
-    _shieldActive = changes.shieldEnabled.newValue;
-    if (!_shieldActive) deactivateAntiPauseShield();
+  if (changes.enabled) {
+    isEnabled = changes.enabled.newValue;
+    if (!isEnabled) {
+      deactivateAntiPauseShield();
+    }
   }
 });
 
@@ -138,7 +137,7 @@ function activateAntiPauseShield() {
   var video = document.querySelector(VIDEO_SELECTOR);
   if (!video) return;
   if (_shieldInjected) return;
-  if (!_shieldActive) return; // Nếu user đã tắt trong Popup thì không bật
+  if (!isEnabled) return;
   
   // Lưu hàm pause() gốc
   _originalPause = video.pause.bind(video);
@@ -182,6 +181,13 @@ function deactivateAntiPauseShield() {
   
   _shieldInjected = false;
   console.log('[AutoSkip YT] 🛡️ Anti-Pause Shield ĐÃ TẮT. Bạn có thể pause thủ công.');
+}
+
+// Kích hoạt shield khi tìm thấy video
+function tryActivateShield() {
+  if (_shieldInjected) return;
+  var video = document.querySelector(VIDEO_SELECTOR);
+  if (video) activateAntiPauseShield();
 }
 
 // ============================================================
@@ -301,9 +307,10 @@ function trySkip() {
 }
 
 // ============================================================
-// CORE – Tua nhanh quảng cáo (2 Chế độ)
+// CORE – Tua nhanh quảng cáo (Bạo lực mặc định)
 // ============================================================
 var _adWasActive = false; // Theo dõi trạng thái quảng cáo
+var _shieldTimeout = null;
 
 function tryFastForwardAd() {
   if (!isEnabled) return;
@@ -319,32 +326,31 @@ function tryFastForwardAd() {
   if (!video) return;
 
   if (adShowing) {
+    if (_shieldTimeout) { clearTimeout(_shieldTimeout); _shieldTimeout = null; }
+    tryActivateShield(); // Chắc chắn Shield đang bật
+    
     _adWasActive = true;
     video.muted = true;
     
-    if (_shieldActive) {
-      // 🛡️ CHẾ ĐỘ BẠO LỰC (Có Shield bảo vệ)
-      video.playbackRate = 16;
-      if (video.paused) video.play().catch(function(e) {});
-      
-      if (video.currentTime < video.duration - 0.5) {
-        video.currentTime = video.duration - 0.1;
-        console.log('[AutoSkip YT] ⏩🛡️ Nhảy thẳng cuối QC + x16 (Shield BẬT)');
-      }
-    } else {
-      // 🌙 CHẾ ĐỘ NGỦ / ẨN MÌNH (Shield TẮT - Cho phép Hẹn giờ ngủ)
-      if (video.playbackRate < 7) {
-        video.playbackRate = 8;
-        console.log('[AutoSkip YT] ⏩🌙 Stealth mode: Tua x8, không nhảy thời gian (Shield TẮT)');
-      }
-    }
+    // 🛡️ CHẾ ĐỘ BẠO LỰC (Luôn dùng)
+    video.playbackRate = 16;
+    if (video.paused) video.play().catch(function(e) {});
     
+    if (video.currentTime < video.duration - 0.5) {
+      video.currentTime = video.duration - 0.1;
+      console.log('[AutoSkip YT] ⏩🛡️ Nhảy thẳng cuối QC + x16 (Shield BẬT)');
+    }
   } else if (_adWasActive) {
     // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
     _adWasActive = false;
     video.playbackRate = 1;
     video.muted = false;
-    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc, đã khôi phục tốc độ + âm thanh');
+    
+    // Hạ Shield sau 3 giây để người dùng Pause thủ công hoặc Hẹn giờ ngủ hoạt động
+    _shieldTimeout = setTimeout(function() {
+      deactivateAntiPauseShield();
+    }, 3000);
+    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc. Shield sẽ hạ sau 3s.');
   }
 }
 
@@ -420,6 +426,8 @@ function startObserver() {
   mutationObserver = new MutationObserver(function(mutations) {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
+        if (!isEnabled) return;
+        tryActivateShield();
         closeAnnoyingPopups();
         trySkip();
         tryFastForwardAd();
@@ -445,6 +453,8 @@ function startInterval() {
   if (checkInterval) return;
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
+    if (!isEnabled) return;
+    tryActivateShield();
     closeAnnoyingPopups();
     trySkip();
     tryFastForwardAd();

@@ -55,8 +55,6 @@ Tiện ích cần kết nối với Google Gemini AI để "mọc mắt" nhìn q
 ## 📊 Cách Tracking (Theo dõi) và Bật/Tắt
 - **Bật/Tắt Toàn Hệ Thống:** Mở bảng điều khiển (`Alt + Shift + S`) và gạt công tắc trên cùng.
 - **Tính năng Chặn Tab Rác:** Gạt công tắc "Chặn tab QC". Khi các website phim lậu cố tình mở 1 tab rác ngầm, AutoSkip sẽ lập tức gửi tab đó cho AI, nếu là quảng cáo nó sẽ hiện một popup nhỏ hỏi bạn có muốn đóng tab rác đó không (mà không làm gián đoạn phim bạn đang xem).
-- **Chế độ YouTube Shield:** Trong bảng điều khiển có một công tắc "YT Shield (Bạo lực)". 
-  - **Bật:** Tua quảng cáo cực nhanh (x16 + nhảy thời gian), nhưng vô hiệu hoá lệnh Pause (YouTube không thể dừng video của bạn).
-  - **Tắt (Chế độ Ngủ):** Tua quảng cáo an toàn (x8), trả lại quyền Pause cho bạn (giúp Hẹn giờ ngủ / Sleep Timer hoạt động bình thường).
+- **Tính năng Chặn Pause (YouTube):** Shield bảo vệ sẽ tự động được BẬT khi AutoSkip đang hoạt động. Tính năng này chặn hoàn toàn các lệnh Pause video (kể cả Hẹn giờ ngủ hoặc Pause thủ công). Nếu bạn muốn Pause, chỉ cần mở bảng điều khiển và **Tắt** hệ thống AutoSkip.
 - **Theo dõi hiệu quả:** Bảng điều khiển sẽ hiện số đếm "Quảng cáo đã diệt". Bạn có thể bấm nút Xoá để đếm lại từ đầu.
 - **Log nâng cao:** Nhấn `F12` mở Console trên website đang xem, bạn sẽ thấy AutoSkip liên tục báo cáo các hành động "Phát hiện nút skip", "Tua nhanh", "Gửi AI", v.v.
