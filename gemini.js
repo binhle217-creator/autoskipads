@@ -144,7 +144,8 @@ async function callGemini(model, contents, apiKey) {
         await new Promise(r => setTimeout(r, 2000));
         continue;
       }
-      console.error('[AutoSkip AI] Fetch error:', err);
+      // Dùng warn thay vì error để tránh hiện đỏ loét trên console khiến user tưởng lỗi code
+      console.warn('[AutoSkip AI] ⚠️ Không thể kết nối tới máy chủ AI (Lỗi mạng hoặc bị chặn):', err.message);
       return null;
     }
   }
