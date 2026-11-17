@@ -357,32 +357,48 @@ function tryFastForwardAd() {
 // ============================================================
 // ĐÓNG CÁC POPUP GÂY PHIỀN (Anti-Adblock, Continue Watching...)
 // ============================================================
+var _lastContinueWatchingTime = 0;
+
 function closeAnnoyingPopups() {
   if (!isEnabled) return;
-  var dialogs = document.querySelectorAll('tp-yt-paper-dialog, ytd-popup-container');
+  // CHÚ Ý: Không truy vấn ytd-popup-container vì nó chứa mọi popup/toast của YouTube (gây spam)
+  var dialogs = document.querySelectorAll('tp-yt-paper-dialog, ytd-modal-with-title-and-button-renderer, yt-confirm-dialog-renderer');
   var foundPopup = false;
+  var now = Date.now();
   
   for (var i = 0; i < dialogs.length; i++) {
     var dialog = dialogs[i];
     if (!isVisible(dialog)) continue;
+    if (dialog.getAttribute('data-autoskip-handled') === 'true') continue;
     
     var text = (dialog.textContent || '').toLowerCase();
+    
+    // 💤 NẾU LÀ HẸN GIỜ NGỦ (Sleep Timer) -> KHÔNG can thiệp, để video dừng và máy tắt màn hình tự nhiên
+    if (text.indexOf('hẹn giờ') !== -1 || text.indexOf('sleep timer') !== -1) {
+      continue;
+    }
+
     var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || text.indexOf('ad blocker') !== -1 || text.indexOf('ad blockers') !== -1;
     var isContinueWatching = text.indexOf('tiếp tục xem') !== -1 || text.indexOf('continue watching') !== -1 || text.indexOf('video đã tạm dừng') !== -1 || text.indexOf('video paused') !== -1;
     
     if (isAntiAdblock || isContinueWatching) {
-      foundPopup = true;
-      
-      // Nếu là Continue Watching, tìm nút Yes/Có/Tiếp tục
+      // Nếu là Continue Watching: có cooldown 5s để tránh spam click liên tục tạo toast "Cảm ơn bạn đã xác nhận"
       if (isContinueWatching) {
-        var buttons = dialog.querySelectorAll('button');
+        if (now - _lastContinueWatchingTime < 5000) {
+          continue;
+        }
+        
+        var buttons = dialog.querySelectorAll('button, yt-button-renderer');
         var clicked = false;
         for (var b = 0; b < buttons.length; b++) {
           var btnText = (buttons[b].textContent || '').toLowerCase();
           if (btnText.indexOf('có') !== -1 || btnText.indexOf('yes') !== -1 || btnText.indexOf('tiếp tục') !== -1) {
+            dialog.setAttribute('data-autoskip-handled', 'true');
+            _lastContinueWatchingTime = now;
             clickElement(buttons[b]);
             console.log('[AutoSkip YT] ✅ Đã tự động chọn "Tiếp tục xem"!');
             clicked = true;
+            foundPopup = true;
             break;
           }
         }
@@ -392,8 +408,10 @@ function closeAnnoyingPopups() {
       } 
       // Nếu là Anti-Adblock
       else if (isAntiAdblock) {
+        foundPopup = true;
         var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
         if (closeBtn && isVisible(closeBtn)) {
+           dialog.setAttribute('data-autoskip-handled', 'true');
            clickElement(closeBtn);
            console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
         } else {
@@ -406,7 +424,7 @@ function closeAnnoyingPopups() {
     }
   }
   
-  // Ép phát lại video nếu có popup gây dừng
+  // Chỉ ép phát lại video nếu xử lý Anti-Adblock (KHÔNG ép phát nếu là thao tác pause/hẹn giờ ngủ)
   if (foundPopup) {
     var video = document.querySelector('video');
     if (video && video.paused) {
@@ -427,7 +445,6 @@ function startObserver() {
     for (var m = 0; m < mutations.length; m++) {
       if (mutations[m].addedNodes.length > 0 || mutations[m].attributeName) {
         if (!isEnabled) return;
-        tryActivateShield();
         closeAnnoyingPopups();
         trySkip();
         tryFastForwardAd();
@@ -454,7 +471,6 @@ function startInterval() {
   checkInterval = setInterval(function() {
     if (!isContextValid()) { safeStop(); return; }
     if (!isEnabled) return;
-    tryActivateShield();
     closeAnnoyingPopups();
     trySkip();
     tryFastForwardAd();
