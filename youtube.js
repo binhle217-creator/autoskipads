@@ -355,81 +355,40 @@ function tryFastForwardAd() {
 }
 
 // ============================================================
-// ĐÓNG CÁC POPUP GÂY PHIỀN (Anti-Adblock, Continue Watching...)
+// ĐÓNG POPUP ANTI-ADBLOCK CỦA YOUTUBE
 // ============================================================
-var _lastContinueWatchingTime = 0;
-
 function closeAnnoyingPopups() {
   if (!isEnabled) return;
-  // CHÚ Ý: Không truy vấn ytd-popup-container vì nó chứa mọi popup/toast của YouTube (gây spam)
-  var dialogs = document.querySelectorAll('tp-yt-paper-dialog, ytd-modal-with-title-and-button-renderer, yt-confirm-dialog-renderer');
-  var foundPopup = false;
-  var now = Date.now();
+  // Chỉ tìm các dialog Anti-Adblock đang thực sự hiển thị (opened)
+  var dialogs = document.querySelectorAll('tp-yt-paper-dialog[opened], ytd-popup-container tp-yt-paper-dialog[opened], tp-yt-iron-overlay-backdrop.opened');
   
   for (var i = 0; i < dialogs.length; i++) {
     var dialog = dialogs[i];
     if (!isVisible(dialog)) continue;
-    if (dialog.getAttribute('data-autoskip-handled') === 'true') continue;
     
     var text = (dialog.textContent || '').toLowerCase();
+    var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || 
+                        text.indexOf('ad blocker') !== -1 || 
+                        text.indexOf('ad blockers') !== -1;
     
-    // 💤 NẾU LÀ HẸN GIỜ NGỦ (Sleep Timer) -> KHÔNG can thiệp, để video dừng và máy tắt màn hình tự nhiên
-    if (text.indexOf('hẹn giờ') !== -1 || text.indexOf('sleep timer') !== -1) {
-      continue;
-    }
-
-    var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || text.indexOf('ad blocker') !== -1 || text.indexOf('ad blockers') !== -1;
-    var isContinueWatching = text.indexOf('tiếp tục xem') !== -1 || text.indexOf('continue watching') !== -1 || text.indexOf('video đã tạm dừng') !== -1 || text.indexOf('video paused') !== -1;
-    
-    if (isAntiAdblock || isContinueWatching) {
-      // Nếu là Continue Watching: có cooldown 5s để tránh spam click liên tục tạo toast "Cảm ơn bạn đã xác nhận"
-      if (isContinueWatching) {
-        if (now - _lastContinueWatchingTime < 5000) {
-          continue;
-        }
-        
-        var buttons = dialog.querySelectorAll('button, yt-button-renderer');
-        var clicked = false;
-        for (var b = 0; b < buttons.length; b++) {
-          var btnText = (buttons[b].textContent || '').toLowerCase();
-          if (btnText.indexOf('có') !== -1 || btnText.indexOf('yes') !== -1 || btnText.indexOf('tiếp tục') !== -1) {
-            dialog.setAttribute('data-autoskip-handled', 'true');
-            _lastContinueWatchingTime = now;
-            clickElement(buttons[b]);
-            console.log('[AutoSkip YT] ✅ Đã tự động chọn "Tiếp tục xem"!');
-            clicked = true;
-            foundPopup = true;
-            break;
-          }
-        }
-        if (!clicked) {
-           dialog.remove(); // Fallback
-        }
-      } 
-      // Nếu là Anti-Adblock
-      else if (isAntiAdblock) {
-        foundPopup = true;
-        var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
-        if (closeBtn && isVisible(closeBtn)) {
-           dialog.setAttribute('data-autoskip-handled', 'true');
-           clickElement(closeBtn);
-           console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
-        } else {
-           dialog.remove();
-           var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
-           for (var bd = 0; bd < backdrops.length; bd++) backdrops[bd].remove();
-           console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
-        }
+    if (isAntiAdblock) {
+      var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
+      if (closeBtn && isVisible(closeBtn)) {
+        clickElement(closeBtn);
+        console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
+      } else {
+        dialog.remove();
+        var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+        for (var bd = 0; bd < backdrops.length; bd++) backdrops[bd].remove();
+        console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
       }
-    }
-  }
-  
-  // Chỉ ép phát lại video nếu xử lý Anti-Adblock (KHÔNG ép phát nếu là thao tác pause/hẹn giờ ngủ)
-  if (foundPopup) {
-    var video = document.querySelector('video');
-    if (video && video.paused) {
-      video.play().catch(function(e) {});
-      console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi xử lý popup!');
+      
+      var video = document.querySelector('video');
+      if (video && video.paused) {
+        video.play().catch(function(e) {});
+        console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi đóng Anti-Adblock!');
+      }
+      break;
     }
   }
 }
