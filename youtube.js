@@ -354,36 +354,6 @@ function tryFastForwardAd() {
 }
 
 // ============================================================
-// ANTI-DETECTION: Đánh lừa cơ chế phát hiện Adblock của YouTube
-// ============================================================
-function injectAntiDetection() {
-  try {
-    var script = document.createElement('script');
-    script.textContent = `
-      (function() {
-        try {
-          Object.defineProperty(Object.prototype, 'adBlocksFound', {
-            get: function() { return 0; },
-            set: function() {},
-            configurable: true
-          });
-          Object.defineProperty(Object.prototype, 'hasAllowedInstreamAd', {
-            get: function() { return true; },
-            set: function() {},
-            configurable: true
-          });
-          if (window.yt && window.yt.config_ && window.yt.config_.openPopupConfig && window.yt.config_.openPopupConfig.supportedPopups) {
-            window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModel = false;
-          }
-        } catch(e) {}
-      })();
-    `;
-    (document.head || document.documentElement).appendChild(script);
-    script.remove();
-  } catch (e) {}
-}
-
-// ============================================================
 // ĐÓNG POPUP ANTI-ADBLOCK CỦA YOUTUBE (Kể cả cảnh báo "3 video nữa")
 // ============================================================
 function closeAnnoyingPopups() {
@@ -584,7 +554,6 @@ function showToast(enabled) {
 // ============================================================
 // KHỞI ĐỘNG
 // ============================================================
-injectAntiDetection();
 loadSettings();
 
 // Lắng nghe khi YouTube navigate (SPA)
@@ -592,7 +561,6 @@ var lastUrl = location.href;
 var navObserver = new MutationObserver(function() {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
-    injectAntiDetection();
     setTimeout(function() {
       pendingSkip = false;
       closeAnnoyingPopups();
