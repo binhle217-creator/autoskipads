@@ -332,14 +332,13 @@ function tryFastForwardAd() {
     _adWasActive = true;
     video.muted = true;
     
-    // 🛡️ CHẾ ĐỘ BẠO LỰC (Luôn dùng)
-    video.playbackRate = 16;
+    // ⚡ TUA NHANH TỰ NHIÊN (Tốc độ tối đa x16, KHÔNG nhảy currentTime để tránh bị YouTube gắn cờ gian lận)
+    if (video.playbackRate < 15) {
+      video.playbackRate = 16;
+    }
     if (video.paused) video.play().catch(function(e) {});
     
-    if (video.currentTime < video.duration - 0.5) {
-      video.currentTime = video.duration - 0.1;
-      console.log('[AutoSkip YT] ⏩🛡️ Nhảy thẳng cuối QC + x16 (Shield BẬT)');
-    }
+    console.log('[AutoSkip YT] ⏩ Tua siêu tốc x16 (QC 15s trôi qua dưới 1s an toàn tuyệt đối)');
   } else if (_adWasActive) {
     // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
     _adWasActive = false;
