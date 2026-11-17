@@ -355,12 +355,45 @@ function tryFastForwardAd() {
 }
 
 // ============================================================
-// ĐÓNG POPUP ANTI-ADBLOCK CỦA YOUTUBE
+// ANTI-DETECTION: Đánh lừa cơ chế phát hiện Adblock của YouTube
+// ============================================================
+function injectAntiDetection() {
+  try {
+    var script = document.createElement('script');
+    script.textContent = `
+      (function() {
+        try {
+          Object.defineProperty(Object.prototype, 'adBlocksFound', {
+            get: function() { return 0; },
+            set: function() {},
+            configurable: true
+          });
+          Object.defineProperty(Object.prototype, 'hasAllowedInstreamAd', {
+            get: function() { return true; },
+            set: function() {},
+            configurable: true
+          });
+          if (window.yt && window.yt.config_ && window.yt.config_.openPopupConfig && window.yt.config_.openPopupConfig.supportedPopups) {
+            window.yt.config_.openPopupConfig.supportedPopups.adBlockMessageViewModel = false;
+          }
+        } catch(e) {}
+      })();
+    `;
+    (document.head || document.documentElement).appendChild(script);
+    script.remove();
+  } catch (e) {}
+}
+
+// ============================================================
+// ĐÓNG POPUP ANTI-ADBLOCK CỦA YOUTUBE (Kể cả cảnh báo "3 video nữa")
 // ============================================================
 function closeAnnoyingPopups() {
   if (!isEnabled) return;
-  // Chỉ tìm các dialog Anti-Adblock đang thực sự hiển thị (opened)
-  var dialogs = document.querySelectorAll('tp-yt-paper-dialog[opened], ytd-popup-container tp-yt-paper-dialog[opened], tp-yt-iron-overlay-backdrop.opened');
+  
+  // Quét toàn bộ các dạng modal/dialog của YouTube (cả kiểu cũ và kiểu view-model mới)
+  var dialogs = document.querySelectorAll(
+    'ytd-popup-container tp-yt-paper-dialog, tp-yt-paper-dialog, ytd-enforcement-message-view-model, yt-playability-error-supported-renderers, [class*="enforcement-message"]'
+  );
   
   for (var i = 0; i < dialogs.length; i++) {
     var dialog = dialogs[i];
@@ -369,24 +402,35 @@ function closeAnnoyingPopups() {
     var text = (dialog.textContent || '').toLowerCase();
     var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || 
                         text.indexOf('ad blocker') !== -1 || 
-                        text.indexOf('ad blockers') !== -1;
+                        text.indexOf('ad blockers') !== -1 ||
+                        text.indexOf('bị chặn sau') !== -1 ||
+                        text.indexOf('blocked after') !== -1 ||
+                        text.indexOf('cho phép quảng cáo') !== -1 ||
+                        text.indexOf('allow youtube ads') !== -1;
     
     if (isAntiAdblock) {
-      var closeBtn = dialog.querySelector('button[aria-label="Đóng"], button[aria-label="Close"], #dismiss-button');
+      // 1. Thử click nút 'X' (Đóng) ở góc trên bên phải
+      var closeBtn = dialog.querySelector(
+        'button[aria-label*="Đóng"], button[aria-label*="Close"], #dismiss-button, yt-icon-button, button.yt-spec-button-shape-next--icon-only-default'
+      );
       if (closeBtn && isVisible(closeBtn)) {
         clickElement(closeBtn);
-        console.log('[AutoSkip YT] ❌ Đã đóng popup Anti-Adblock!');
-      } else {
-        dialog.remove();
-        var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
-        for (var bd = 0; bd < backdrops.length; bd++) backdrops[bd].remove();
-        console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock bằng lệnh xoá phần tử!');
+        console.log('[AutoSkip YT] ❌ Đã click nút đóng popup Anti-Adblock!');
       }
       
-      var video = document.querySelector('video');
+      // 2. Xoá thẳng phần tử popup và lớp phủ đen mờ (backdrop)
+      dialog.remove();
+      var backdrops = document.querySelectorAll('tp-yt-iron-overlay-backdrop');
+      for (var bd = 0; bd < backdrops.length; bd++) {
+        backdrops[bd].remove();
+      }
+      console.log('[AutoSkip YT] 🗑 Đã xoá popup Anti-Adblock và backdrop!');
+      
+      // 3. Ép video tiếp tục phát
+      var video = document.querySelector(VIDEO_SELECTOR);
       if (video && video.paused) {
         video.play().catch(function(e) {});
-        console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi đóng Anti-Adblock!');
+        console.log('[AutoSkip YT] ▶️ Tiếp tục phát video sau khi dẹp Anti-Adblock!');
       }
       break;
     }
@@ -541,6 +585,7 @@ function showToast(enabled) {
 // ============================================================
 // KHỞI ĐỘNG
 // ============================================================
+injectAntiDetection();
 loadSettings();
 
 // Lắng nghe khi YouTube navigate (SPA)
@@ -548,8 +593,10 @@ var lastUrl = location.href;
 var navObserver = new MutationObserver(function() {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
+    injectAntiDetection();
     setTimeout(function() {
       pendingSkip = false;
+      closeAnnoyingPopups();
       trySkip();
       tryFastForwardAd();
     }, 500);
