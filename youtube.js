@@ -359,9 +359,29 @@ function tryFastForwardAd() {
 function closeAnnoyingPopups() {
   if (!isEnabled) return;
   
-  // Quét toàn bộ các dạng modal/dialog của YouTube (cả kiểu cũ và kiểu view-model mới)
+  // ── 1. Xử lý màn hình enforcement FULL (trắng/đen toàn trang) ──────────────
+  // YouTube mới dùng ytd-enforcement-message-view-model hiển thị ngay trong player
+  // element này không có text nên phải xử lý riêng bằng tag name
+  var enforcementEls = document.querySelectorAll(
+    'ytd-enforcement-message-view-model, yt-playability-error-supported-renderers'
+  );
+  for (var e = 0; e < enforcementEls.length; e++) {
+    var el = enforcementEls[e];
+    if (!isVisible(el)) continue;
+    // Ẩn element (không xóa để tránh YouTube re-mount ngay)
+    el.style.setProperty('display', 'none', 'important');
+    el.style.setProperty('visibility', 'hidden', 'important');
+    console.log('[AutoSkip YT] 🚫 Đã ẩn enforcement-message-view-model (màn hình trắng/chặn)!');
+    // Ép video tiếp tục phát
+    var videoEl = document.querySelector(VIDEO_SELECTOR);
+    if (videoEl && videoEl.paused) {
+      videoEl.play().catch(function(e) {});
+    }
+  }
+
+  // ── 2. Xử lý popup dialog thông thường (cảnh báo "3 video nữa", etc.) ──────
   var dialogs = document.querySelectorAll(
-    'ytd-popup-container tp-yt-paper-dialog, tp-yt-paper-dialog, ytd-enforcement-message-view-model, yt-playability-error-supported-renderers, [class*="enforcement-message"]'
+    'ytd-popup-container tp-yt-paper-dialog, tp-yt-paper-dialog, [class*="enforcement-message"]'
   );
   
   for (var i = 0; i < dialogs.length; i++) {
@@ -375,7 +395,9 @@ function closeAnnoyingPopups() {
                         text.indexOf('bị chặn sau') !== -1 ||
                         text.indexOf('blocked after') !== -1 ||
                         text.indexOf('cho phép quảng cáo') !== -1 ||
-                        text.indexOf('allow youtube ads') !== -1;
+                        text.indexOf('allow youtube ads') !== -1 ||
+                        text.indexOf('vi phạm điều khoản') !== -1 ||
+                        text.indexOf('terms of service') !== -1;
     
     if (isAntiAdblock) {
       // 1. Thử click nút 'X' (Đóng) ở góc trên bên phải
