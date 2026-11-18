@@ -362,16 +362,15 @@ function tryFastForwardAd() {
     
     console.log('[AutoSkip YT] ⏩ Tua siêu tốc x16 (QC 15s trôi qua dưới 1s an toàn tuyệt đối)');
   } else if (_adWasActive) {
-    // Quảng cáo vừa kết thúc → Khôi phục hoàn toàn
+    // Quảng cáo vừa kết thúc → Khôi phục ngay lập tức
     _adWasActive = false;
     video.playbackRate = 1;
     video.muted = false;
     
-    // Hạ Shield sau 3 giây để người dùng Pause thủ công hoặc Hẹn giờ ngủ hoạt động
-    _shieldTimeout = setTimeout(function() {
-      deactivateAntiPauseShield();
-    }, 3000);
-    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc. Shield sẽ hạ sau 3s.');
+    // Hạ Shield NGAY để YouTube load video chính không bị chặn pause() nội bộ
+    // (delay 3s trước đây gây màn hình trắng vì YouTube cần gọi pause() khi khởi động player)
+    deactivateAntiPauseShield();
+    console.log('[AutoSkip YT] ✅ Quảng cáo kết thúc. Shield hạ ngay.');
   }
 }
 
