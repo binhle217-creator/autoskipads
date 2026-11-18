@@ -12,7 +12,7 @@
 // CẤU HÌNH YouTube
 // ============================================================
 var YT_SKIP_SELECTORS = [
-  // Nút skip chính
+  // Nút skip chính (class cổ điển)
   '.ytp-skip-ad-button',
   '.ytp-ad-skip-button',
   '.ytp-ad-skip-button-modern',
@@ -25,14 +25,21 @@ var YT_SKIP_SELECTORS = [
   '.ytp-ad-skip-button-slot',
   '.ytp-ad-skip-button-container button',
   '.ytp-ad-skip-button-container',
-  // Selector aria (bỏ các selector dùng * dễ gây nhầm lẫn với nút accessibility)
+  // Selector aria
   '[aria-label="Skip ad"]',
   '[aria-label="Bỏ qua quảng cáo"]',
+  '[aria-label="Skip Ad"]',
+  '[aria-label="Bỏ qua Quảng cáo"]',
   // Selector mới YouTube 2024-2026
   '.ytp-ad-skip-button-modern .ytp-ad-button-text',
   'div[class*="skip-ad"] button',
   'div[class*="skip-ad"]',
   '.ad-skip-button',
+  // Selector mới nhất 2026 (obfuscated class nhưng dùng data attribute)
+  'button[data-testid*="skip"]',
+  '[class*="skipButton"]',
+  '[class*="SkipButton"]',
+  '.ytp-ad-skip-ad-button',
 ];
 
 var YT_AD_PLAYING_SELECTORS = [
@@ -318,8 +325,23 @@ function tryFastForwardAd() {
   var adShowing = false;
   var player = document.querySelector('#movie_player') || document.querySelector('.html5-video-player');
   
+  // Cách 1: class .ad-showing trên player (cổ điển, vẫn còn hoạt động)
   if (player && player.classList.contains('ad-showing')) {
     adShowing = true;
+  }
+
+  // Cách 2: YouTube player API – getAdState() (nếu có)
+  if (!adShowing && player && typeof player.getAdState === 'function') {
+    try {
+      var adState = player.getAdState();
+      if (adState === 1 || adState === true) adShowing = true;
+    } catch(e) {}
+  }
+
+  // Cách 3: Kiểm tra DOM – .ytp-ad-player-overlay hoặc .ytp-ad-module tồn tại
+  if (!adShowing) {
+    var adOverlay = document.querySelector('.ytp-ad-player-overlay, .ytp-ad-module, .ytp-ad-text');
+    if (adOverlay && isVisible(adOverlay)) adShowing = true;
   }
 
   var video = document.querySelector(VIDEO_SELECTOR);
@@ -359,29 +381,11 @@ function tryFastForwardAd() {
 function closeAnnoyingPopups() {
   if (!isEnabled) return;
   
-  // ── 1. Xử lý màn hình enforcement FULL (trắng/đen toàn trang) ──────────────
-  // YouTube mới dùng ytd-enforcement-message-view-model hiển thị ngay trong player
-  // element này không có text nên phải xử lý riêng bằng tag name
-  var enforcementEls = document.querySelectorAll(
-    'ytd-enforcement-message-view-model, yt-playability-error-supported-renderers'
-  );
-  for (var e = 0; e < enforcementEls.length; e++) {
-    var el = enforcementEls[e];
-    if (!isVisible(el)) continue;
-    // Ẩn element (không xóa để tránh YouTube re-mount ngay)
-    el.style.setProperty('display', 'none', 'important');
-    el.style.setProperty('visibility', 'hidden', 'important');
-    console.log('[AutoSkip YT] 🚫 Đã ẩn enforcement-message-view-model (màn hình trắng/chặn)!');
-    // Ép video tiếp tục phát
-    var videoEl = document.querySelector(VIDEO_SELECTOR);
-    if (videoEl && videoEl.paused) {
-      videoEl.play().catch(function(e) {});
-    }
-  }
-
-  // ── 2. Xử lý popup dialog thông thường (cảnh báo "3 video nữa", etc.) ──────
+  // ── 1. Xử lý popup dialog thông thường (cảnh báo "3 video nữa", toàn trang) ──
   var dialogs = document.querySelectorAll(
-    'ytd-popup-container tp-yt-paper-dialog, tp-yt-paper-dialog, [class*="enforcement-message"]'
+    'ytd-popup-container tp-yt-paper-dialog, tp-yt-paper-dialog, ' +
+    'ytd-enforcement-message-view-model, yt-playability-error-supported-renderers, ' +
+    '[class*="enforcement-message"]'
   );
   
   for (var i = 0; i < dialogs.length; i++) {
@@ -389,7 +393,12 @@ function closeAnnoyingPopups() {
     if (!isVisible(dialog)) continue;
     
     var text = (dialog.textContent || '').toLowerCase();
-    var isAntiAdblock = text.indexOf('trình chặn quảng cáo') !== -1 || 
+    // enforcement-message-view-model thường không có text → coi là anti-adblock nếu tag name khớp
+    var tagName = dialog.tagName ? dialog.tagName.toLowerCase() : '';
+    var isEnforcementTag = tagName === 'ytd-enforcement-message-view-model' ||
+                           tagName === 'yt-playability-error-supported-renderers';
+    var isAntiAdblock = isEnforcementTag ||
+                        text.indexOf('trình chặn quảng cáo') !== -1 || 
                         text.indexOf('ad blocker') !== -1 || 
                         text.indexOf('ad blockers') !== -1 ||
                         text.indexOf('bị chặn sau') !== -1 ||
